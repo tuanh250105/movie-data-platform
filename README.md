@@ -13,7 +13,6 @@
 ---
 
 **Tác giả thực hiện:** [Lê Trần Tuấn Anh](https://github.com/tuanh250105)  
-**Giảng viên hướng dẫn:** ThS. Nguyễn Văn Thành  
 **Đề tài:** *Xây dựng Data Platform sử dụng mã nguồn mở phục vụ hệ thống gợi ý phim*
 
 </div>
@@ -167,7 +166,7 @@ flowchart TB
 ├── architecture_diagram.drawio.xml     # Sơ đồ kiến trúc dạng XML Draw.io
 ├── docs/                               # Thư mục chứa toàn bộ tài liệu kỹ thuật & báo cáo
 │   ├── tai_lieu_ky_thuat_he_thong.md   # Tài liệu Kỹ thuật hệ thống tổng hợp
-│   ├── bao_cao_y_tuong_va_tien_do_gui_gvhd.md # Báo cáo tiến độ gửi Giảng viên hướng dẫn
+│   ├── bao_cao_y_tuong_va_tien_do_gui_gvhd.md # Báo cáo tiến độ dự án
 │   └── so_do_kien_truc_chi_tiet.md   # Sơ đồ Kiến trúc chi tiết các Layer (Mermaid)
 ├── data/
 │   ├── raw/                            # Bronze Layer Storage (6.662 phim & 10.758 reviews)
