@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🍿 MOVIE & TV SHOW DATA LAKEHOUSE PLATFORM
+# MOVIE AND TV SHOW DATA LAKEHOUSE PLATFORM
 ### *End-to-End Open-Source Data Engineering & AI Recommendation System*
 
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
@@ -20,20 +20,20 @@
 
 ---
 
-## 📌 TỔNG QUAN DỰ ÁN (PROJECT OVERVIEW)
+## 1. TỔNG QUAN DỰ ÁN (PROJECT OVERVIEW)
 
-**Movie & TV Show Data Lakehouse Platform** là một hệ thống Data Platform hiện đại được thiết kế theo kiến trúc **Data Lakehouse (Medallion Architecture: Bronze ➔ Silver ➔ Gold)**. 
+**Movie & TV Show Data Lakehouse Platform** là một hệ thống Data Platform hiện đại được thiết kế theo kiến trúc **Data Lakehouse (Medallion Architecture: Bronze -> Silver -> Gold)**. 
 
 Dự án thu thập, xử lý và quản trị dữ liệu điện ảnh quy mô lớn từ **TMDb API**, phục vụ đồng thời cho cả **Data Engineering**, **Machine Learning** (Gợi ý phim Content-Based & Phân tích cảm xúc Sentiment Analysis) và **Business Intelligence (BI)**.
 
-### 🌟 ĐIỂM SÁNG KIẾN TRÚC: KIẾN TRÚC LUỒNG KÉP (DUAL-PATH ARCHITECTURE)
+### KIẾN TRÚC LUỒNG KÉP (DUAL-PATH ARCHITECTURE)
 Để tối ưu hóa mâu thuẫn giữa độ trễ Web UI (< 1s) và chi phí tính toán nặng của PySpark Batch ETL:
-- ⚡ **Fast-Path Serving (< 1s)**: Khi xảy ra Cache Miss (người dùng tìm phim hiếm chưa có trong DB), `on_demand_ingest.py` cào nhanh metadata từ TMDb API, nạp tạm vào RAM Flask Backend và trả kết quả tức thời cho Web UI trong **< 1 giây**.
-- 🐢 **Slow-Path Async Batch Engine**: Đồng thời, dữ liệu thô được nạp vào **Bronze Layer** và kích hoạt tiến trình **PySpark ETL running in background** để làm sạch, phẳng hóa JSON, ghi bảng **Apache Iceberg (Silver)** và cập nhật Ma trận Vector toàn cục ở **Gold Layer**.
+- **Fast-Path Serving (< 1s)**: Khi xảy ra Cache Miss (người dùng tìm phim hiếm chưa có trong DB), `on_demand_ingest.py` cào nhanh metadata từ TMDb API, nạp tạm vào RAM Flask Backend và trả kết quả tức thời cho Web UI trong **< 1 giây**.
+- **Slow-Path Async Batch Engine**: Đồng thời, dữ liệu thô được nạp vào **Bronze Layer** và kích hoạt tiến trình **PySpark ETL running in background** để làm sạch, phẳng hóa JSON, ghi bảng **Apache Iceberg (Silver)** và cập nhật Ma trận Vector toàn cục ở **Gold Layer**.
 
 ---
 
-## 🏗️ SƠ ĐỒ KIẾN TRÚC TỔNG THỂ (SYSTEM ARCHITECTURE)
+## 2. SƠ ĐỒ KIẾN TRÚC TỔNG THỂ (SYSTEM ARCHITECTURE)
 
 ```mermaid
 flowchart TB
@@ -145,19 +145,19 @@ flowchart TB
 
 ---
 
-## 🛠️ TÍNH NĂNG KỸ THUẬT NỔI BẬT (KEY TECHNICAL FEATURES)
+## 3. TÍNH NĂNG KỸ THUẬT NỔI BẬT (KEY TECHNICAL FEATURES)
 
 1. **Storage-Compute Decoupling**: Tách biệt hoàn toàn PySpark (Compute Engine) và MinIO (S3 Object Storage).
 2. **Bộ cào TMDb 5 Luồng & Bộ lọc 4 Lớp**: Cào tự động Phim Hot, Phim Kinh điển, Phim Trending, Phim Hàng độc (Cult Classics) và Phim Bộ (TV Series) dựa trên bộ lọc số vote, thời lượng và tính toàn vẹn dữ liệu.
 3. **Cơ chế Chống trùng Nối tiếp (Incremental Crawl)**: Tự động tải danh sách ID cũ vào bộ nhớ, đảm bảo mọi lần cào sau chỉ lấy phim mới 100%.
 4. **PySpark ETL Silver Layer**: Khử trùng lặp bản ghi (`dropDuplicates`), ép kiểu chuẩn (`release_date`, `budget`, `revenue`, `vote_average`), phẳng hóa các mảng JSON phức tạp (`genres`, `cast`, `crew`, `keywords`).
 5. **AI Feature Store & Sentiment Analysis**:
-   - **Content-Based Recommendation**: Chuỗi NLP (`RegexTokenizer` ➔ `StopWordsRemover` ➔ `Word2Vec`/`TF-IDF`) ➔ Tính tương đồng góc **Cosine Similarity**.
-   - **Sentiment Analysis**: Trọng số **TF-IDF** ➔ Phân loại cảm xúc bằng **Logistic Regression Classifier**.
+   - **Content-Based Recommendation**: Chuỗi NLP (`RegexTokenizer` -> `StopWordsRemover` -> `Word2Vec`/`TF-IDF`) -> Tính tương đồng góc **Cosine Similarity**.
+   - **Sentiment Analysis**: Trọng số **TF-IDF** -> Phân loại cảm xúc bằng **Logistic Regression Classifier**.
 
 ---
 
-## 📁 CẤU TRÚC THƯ MỤC REPOSITORY
+## 4. CẤU TRÚC THƯ MỤC REPOSITORY
 
 ```
 .
@@ -193,7 +193,7 @@ flowchart TB
 
 ---
 
-## 🚀 HƯỚNG DẪN CHẠY DỰ ÁN (QUICKSTART GUIDE)
+## 5. HƯỚNG DẪN CHẠY DỰ ÁN (QUICKSTART GUIDE)
 
 ### 1. Cài đặt Môi trường & Khởi tạo Secret `.env`
 ```bash
@@ -234,11 +234,7 @@ python src/pipeline/validate_silver.py
 
 ---
 
-## 📄 GIẤY PHÉP & BẢN QUYỀN (LICENSE & CREDITS)
+## 6. GIẤY PHÉP & BẢN QUYỀN (LICENSE & CREDITS)
 
 - Dự án được phát hành dưới giấy phép mã nguồn mở [MIT License](LICENSE).
 - Dữ liệu điện ảnh được cung cấp qua API chính thức từ [The Movie Database (TMDb)](https://www.themoviedb.org/).
-
-<div align="center">
-  <sub>Built with ❤️ by <b>Lê Trần Tuấn Anh</b> under guidance of <b>ThS. Nguyễn Văn Thành</b></sub>
-</div>
