@@ -12,7 +12,7 @@
 
 ---
 
-**Tác giả thực hiện:** [Lê Trần Tuấn Anh](https://github.com/)  
+**Tác giả thực hiện:** [Lê Trần Tuấn Anh](https://github.com/tuanh250105)  
 **Giảng viên hướng dẫn:** ThS. Nguyễn Văn Thành  
 **Đề tài:** *Xây dựng Data Platform sử dụng mã nguồn mở phục vụ hệ thống gợi ý phim*
 
@@ -36,73 +36,111 @@ Dự án thu thập, xử lý và quản trị dữ liệu điện ảnh quy mô
 ## 🏗️ SƠ ĐỒ KIẾN TRÚC TỔNG THỂ (SYSTEM ARCHITECTURE)
 
 ```mermaid
-flowchart TD
-    subgraph INGESTION ["🌐 1. INGESTION TIER (Tầng Thu thập Dữ liệu)"]
-        TMDB["🌐 TMDb REST API"]
-        Client["🔑 tmdb_client.py (Auth, Rate Limiter & Retry)"]
-        Crawler["🚀 tmdb_crawler.py (5-Stream Crawl & 4-Layer Filter)"]
-        OnDemand["⚡ on_demand_ingest.py (Fast-Path Catch-all)"]
-        
-        TMDB -->|"HTTPS GET (Raw JSON)"| Client
-        Client -->|"Rate-Limited Session (0.25s)"| Crawler
-        Client -->|"Rate-Limited Session (0.25s)"| OnDemand
+flowchart TB
+    subgraph INGESTION["1. INGESTION & DATA COLLECTION TIER (Tầng Thu thập Dữ liệu)"]
+        node_tmdb["External API: TMDb REST Services"]
+        node_client["Ingestion Core: tmdb_client.py (Auth, Rate Limiter & Retry)"]
+        node_crawler["Batch Ingestion: tmdb_crawler.py (5-Stream Crawl & 4-Layer Filter)"]
+        node_ondemand["Event Ingestion: on_demand_ingest.py (Realtime Catch-all, Async)"]
     end
 
-    subgraph LAKEHOUSE ["💾 2. MEDALLION LAKEHOUSE TIER (Tầng Lưu trữ Bảng)"]
-        subgraph BRONZE ["🥉 BRONZE ZONE (Raw CSVs)"]
-            b_movies["movies_metadata.csv (1.662 phim)"]
-            b_reviews["reviews.csv (3.727 reviews)"]
-            b_manifest["bronze_manifest.json"]
-        end
-
-        subgraph SILVER ["🥈 SILVER ZONE (Apache Iceberg / Parquet)"]
-            s_movies["silver_movies.parquet (Data sạch)"]
-            s_credits["silver_credits.parquet (Flattened)"]
-            s_keywords["silver_keywords.parquet"]
-            s_reviews["silver_reviews.parquet (Normalized)"]
-            s_catalog["Iceberg Metadata Catalog"]
-            s_movies & s_credits & s_keywords & s_reviews -. "Managed by" .-> s_catalog
-        end
-
-        subgraph GOLD ["🥇 GOLD ZONE (Feature Store & Analytics)"]
-            g_features["gold_movie_features.parquet (Vector Store)"]
-            g_sentiment["gold_sentiment_model.bin (LogReg Model)"]
-            g_marts["gold_analytics_aggregates (BI Mart)"]
-        end
+    subgraph BRONZE_ZONE["BRONZE ZONE (Raw / Unprocessed Data - Schema-on-Read)"]
+        b_movies["movies_metadata.csv"]
+        b_reviews["reviews.csv"]
+        b_credits["credits.csv"]
+        b_keywords["keywords.csv"]
+        b_manifest["bronze_manifest.json (Audit Log)"]
     end
 
-    subgraph ENGINE ["⚡ 3. COMPUTE & ORCHESTRATION TIER"]
-        Spark["🔥 Apache Spark (PySpark ETL & MLlib)"]
-        Dagster["⚙️ Dagster Orchestrator"]
-        MinIO["📦 MinIO Object Storage (S3 Storage)"]
-        
-        Dagster -->|"Orchestrates Pipelines"| Spark
-        Spark <-->|"S3 Protocol"| MinIO
+    subgraph SILVER_ZONE["SILVER ZONE (Trusted Data - Schema Enforced Iceberg Tables)"]
+        s_movies["silver_movies (Iceberg / Parquet)"]
+        s_credits["silver_credits (Flattened JSON)"]
+        s_keywords["silver_keywords (Flattened)"]
+        s_reviews["silver_reviews (Cleaned Sentiment)"]
+        s_catalog["Iceberg Metadata Catalog (Snapshots & Manifest Tree)"]
     end
 
-    subgraph SERVING ["🖥️ 4. SERVING & CONSUMPTION TIER"]
-        Flask["🐍 Flask REST API Backend"]
-        WebUI["🍿 Modern Web UI (Dark Glassmorphism)"]
-        Superset["📊 Apache Superset BI"]
-        
-        Flask <-->|"REST API Protocols"| WebUI
+    subgraph GOLD_ZONE["GOLD ZONE (Curated Data / Feature Store & Analytics Mart)"]
+        g_features["gold_movie_features (Vector Feature Store)"]
+        g_sentiment["gold_sentiment_model (Serialized ML Model)"]
+        g_marts["gold_analytics_aggregates (OLAP BI Mart)"]
     end
 
-    %% Data Lineage Flow
-    Crawler -->|"1. Append Raw CSVs"| b_movies
-    Crawler -->|"1. Append Raw Reviews"| b_reviews
-    b_movies & b_reviews -->|"2. Read Raw CSVs"| Spark
-    Spark -->|"3. PySpark ETL (Cast, Deduplicate, Flatten)"| s_movies & s_reviews & s_credits & s_keywords
-    s_movies & s_credits & s_reviews -->|"4. Read Cleaned Tables"| Spark
-    Spark -->|"5. ML Feature Extraction"| g_features & g_sentiment & g_marts
-    
-    g_features -->|"6. Vector Query (< 50ms)"| Flask
-    g_sentiment -->|"7. Realtime Sentiment Inference"| Flask
-    g_marts -->|"8. SQL OLAP Queries"| Superset
-    
-    WebUI -. "9. Search Miss Event" .-> OnDemand
-    OnDemand -->|"10a. FAST-PATH: Trả Data siêu tốc (< 1s)"| Flask
-    OnDemand -->|"10b. SLOW-PATH: Micro-Ingest"| b_movies
+    subgraph LAKEHOUSE["2. MEDALLION DATA LAKEHOUSE TIER (Tầng Lưu trữ & Quản trị Bảng)"]
+        BRONZE_ZONE
+        SILVER_ZONE
+        GOLD_ZONE
+    end
+
+    subgraph ENGINE_TIER["3. COMPUTE & ORCHESTRATION TIER (Động cơ Tính toán & Điều phối)"]
+        node_spark["Distributed Compute: Apache Spark (PySpark Core & MLlib)"]
+        node_dagster["Data Pipeline Orchestration: Dagster (Software-Defined Assets)"]
+        node_minio["Object Storage: MinIO (Amazon S3 Compatible API)"]
+    end
+
+    subgraph SERVING_TIER["4. SERVING & CONSUMPTION TIER (Tầng Phục vụ & Trực quan hóa)"]
+        node_flask["Application Backend: Flask REST API Engine"]
+        node_webui["End-User Client: Modern Web UI (Dark Glassmorphism)"]
+        node_superset["BI & Analytics: Apache Superset (SQL OLAP Dashboards)"]
+    end
+
+    node_tmdb -->|"HTTPS GET (Raw JSON)"| node_client
+    node_client -->|"Rate-Limited Session (0.25s)"| node_crawler
+    node_client -->|"Rate-Limited Session (0.25s)"| node_ondemand
+
+    s_movies -. "Managed by" .-> s_catalog
+    s_credits -. "Managed by" .-> s_catalog
+    s_keywords -. "Managed by" .-> s_catalog
+    s_reviews -. "Managed by" .-> s_catalog
+
+    node_dagster -->|"Orchestrates Scheduled Assets"| node_spark
+    node_spark <-->|"S3 Protocol (s3a://)"| node_minio
+    node_spark -. "Query Snapshots / Time Travel" .-> s_catalog
+
+    node_flask <-->|"JSON REST Protocols"| node_webui
+
+    node_crawler -. "Write Raw Files" .-> node_minio
+
+    node_crawler -->|"1. Raw Movies Ingestion (Append-Only)"| b_movies
+    node_crawler -->|"1. Raw Reviews Ingestion"| b_reviews
+    node_crawler -->|"1. Raw Credits Ingestion"| b_credits
+    node_crawler -->|"1. Raw Keywords Ingestion"| b_keywords
+    node_crawler -. "1. Write Audit Entry" .-> b_manifest
+
+    b_manifest -. "Pipeline Health / Observability" .-> node_dagster
+
+    b_movies -->|"2. Batch Read Raw CSVs"| node_spark
+    b_reviews -->|"2. Batch Read Raw CSVs"| node_spark
+    b_credits -->|"2. Batch Read Raw CSVs"| node_spark
+    b_keywords -->|"2. Batch Read Raw CSVs"| node_spark
+
+    node_spark -->|"3. Silver Transformation ETL (Deduplicate, Cast, Flatten JSON)"| s_movies
+    node_spark -->|"3. Clean & Normalize Reviews"| s_reviews
+    node_spark -->|"3. Flatten Credits"| s_credits
+    node_spark -->|"3. Flatten Keywords"| s_keywords
+
+    s_movies -->|"4. Read Trusted Parquet Tables"| node_spark
+    s_credits -->|"4. Read Trusted Parquet Tables"| node_spark
+    s_keywords -->|"4. Read Trusted Parquet Tables"| node_spark
+    s_reviews -->|"4. Read Trusted Parquet Tables"| node_spark
+
+    node_spark -->|"5. ML Feature Extraction (Genres + Keywords + Cast via Word2Vec/TF-IDF)"| g_features
+    node_spark -->|"5. Train Sentiment Classifier (Logistic Reg.)"| g_sentiment
+    node_spark -->|"5. Build BI Aggregates"| g_marts
+
+    g_features -->|"6. Low-Latency Feature Query (< 50ms)"| node_flask
+    g_sentiment -->|"7. Realtime Sentiment Inference"| node_flask
+    g_marts -->|"8. SQL OLAP Queries"| node_superset
+
+    node_webui -. "A1. Search Miss Event (Cache Miss)" .-> node_ondemand
+    node_ondemand -. "A2. Fast-Path Response (Bypass ETL, Minimal Fields)" .-> node_flask
+    node_ondemand -->|"A3. Async Micro-Ingest"| b_movies
+    node_ondemand -->|"A3. Async Micro-Ingest"| b_credits
+    node_ondemand -->|"A3. Async Micro-Ingest"| b_reviews
+
+    b_movies -. "A4. Next Scheduled Run Picks Up New Rows" .-> node_dagster
+    b_credits -. "A4. Next Scheduled Run Picks Up New Rows" .-> node_dagster
+    b_reviews -. "A4. Next Scheduled Run Picks Up New Rows" .-> node_dagster
 ```
 
 ---
@@ -132,7 +170,7 @@ flowchart TD
 │   ├── bao_cao_y_tuong_va_tien_do_gui_gvhd.md # Báo cáo tiến độ gửi Giảng viên hướng dẫn
 │   └── so_do_kien_truc_chi_tiet.md   # Sơ đồ Kiến trúc chi tiết các Layer (Mermaid)
 ├── data/
-│   ├── raw/                            # Bronze Layer Storage (1.662 phim & 3.727 reviews)
+│   ├── raw/                            # Bronze Layer Storage (6.662 phim & 10.758 reviews)
 │   │   ├── movies_metadata.csv
 │   │   ├── credits.csv
 │   │   ├── keywords.csv
@@ -160,8 +198,8 @@ flowchart TD
 ### 1. Cài đặt Môi trường & Khởi tạo Secret `.env`
 ```bash
 # Clone repository về máy
-git clone https://github.com/your-username/movie-data-lakehouse-platform.git
-cd movie-data-lakehouse-platform
+git clone https://github.com/tuanh250105/movie-data-platform.git
+cd movie-data-platform
 
 # Tạo virtual environment và cài đặt dependencies
 python -m venv venv
