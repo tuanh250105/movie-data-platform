@@ -12,6 +12,7 @@ __pycache__/
 # Data storage (git ignore raw & processed datasets)
 data/raw/*.csv
 data/raw/*.json
+data/backup*/
 data/silver/
 data/gold/
 

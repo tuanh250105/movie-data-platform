@@ -19,10 +19,22 @@ MOVIES_CSV = os.path.join(RAW_DATA_DIR, "movies_metadata.csv")
 REVIEWS_CSV = os.path.join(RAW_DATA_DIR, "reviews.csv")
 
 def append_dict_to_csv(filepath: str, data_dict: Dict):
-    """Appends a single dictionary record to a CSV file."""
+    """Appends a single dictionary record to a CSV file with schema validation."""
     file_exists = os.path.exists(filepath)
+    fieldnames = list(data_dict.keys())
+
+    if file_exists:
+        with open(filepath, "r", encoding="utf-8") as f:
+            existing_header = [h.strip() for h in f.readline().strip().split(",") if h.strip()]
+        if existing_header != fieldnames:
+            raise ValueError(
+                f"Schema mismatch in {os.path.basename(filepath)}: "
+                f"existing={existing_header} vs new={fieldnames}. "
+                f"Xóa hoặc backup file cũ trước khi đổi schema."
+            )
+
     with open(filepath, "a", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=list(data_dict.keys()))
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
         if not file_exists:
             writer.writeheader()
         writer.writerow(data_dict)

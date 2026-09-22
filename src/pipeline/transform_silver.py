@@ -4,14 +4,15 @@ Transforms raw Bronze datasets (data/raw/) into clean, standardized Silver Layer
 1. Deduplication on movie ID and review ID
 2. Data Type Casting (Date, Double, Int, Float)
 3. JSON Flattening (Extracting clean names from genres, cast, crew, keywords)
-4. Text Normalization and NULL Handling
-5. Saves clean tables in Parquet format.
+4. Multi-Task Crew Role Extraction (Director, Writer, Screenplay, Producer)
+5. Text Normalization and Sentiment Label Standardization
+6. Saves clean tables in Parquet and CSV formats.
 """
 
 import os
 import json
 import pandas as pd
-from typing import List, Dict
+from typing import List, Dict, Set
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 BRONZE_DIR = os.path.join(PROJECT_ROOT, "data", "raw")
@@ -28,6 +29,19 @@ def safe_parse_json_names(json_str: str) -> str:
         if isinstance(data, list):
             names = [item.get("name", "") for item in data if isinstance(item, dict) and item.get("name")]
             return ", ".join(names)
+    except Exception:
+        pass
+    return ""
+
+def extract_crew_by_jobs(json_str: str, target_jobs: Set[str]) -> str:
+    """Extracts comma-separated crew names matching specific target job roles."""
+    if not json_str or pd.isna(json_str) or json_str == "[]":
+        return ""
+    try:
+        data = json.loads(json_str)
+        if isinstance(data, list):
+            names = [item.get("name", "") for item in data if isinstance(item, dict) and item.get("job") in target_jobs and item.get("name")]
+            return ", ".join(list(dict.fromkeys(names))) # Deduplicate names preserving order
     except Exception:
         pass
     return ""
@@ -54,6 +68,7 @@ def transform_silver_layer():
         df_movies["vote_average"] = pd.to_numeric(df_movies["vote_average"], errors="coerce").fillna(0.0)
         df_movies["vote_count"] = pd.to_numeric(df_movies["vote_count"], errors="coerce").fillna(0).astype(int)
         df_movies["release_date"] = pd.to_datetime(df_movies["release_date"], errors="coerce").dt.strftime("%Y-%m-%d")
+        df_movies["original_language"] = df_movies["original_language"].fillna("en").astype(str).str.strip().str.lower().replace({"cn": "zh"})
 
         # JSON Flattening
         df_movies["genres_clean"] = df_movies["genres"].apply(safe_parse_json_names)
@@ -74,14 +89,16 @@ def transform_silver_layer():
     # 2. Transform Credits (silver_credits)
     credits_path = os.path.join(BRONZE_DIR, "credits.csv")
     if os.path.exists(credits_path):
-        print("[Silver 2/4] Processing Credits (Cast & Crew)...", flush=True)
+        print("[Silver 2/4] Processing Credits (Cast & Expanded Crew)...", flush=True)
         df_credits = pd.read_csv(credits_path, dtype=str)
         df_credits = df_credits.drop_duplicates(subset=["id"]).copy()
         df_credits["id"] = pd.to_numeric(df_credits["id"], errors="coerce").astype("Int64")
 
-        # Extract Cast Names & Director Names
+        # Extract Cast Names & Multi-task Crew Roles
         df_credits["top_cast_clean"] = df_credits["cast"].apply(safe_parse_json_names)
-        df_credits["director_clean"] = df_credits["crew"].apply(safe_parse_json_names)
+        df_credits["director_clean"] = df_credits["crew"].apply(lambda s: extract_crew_by_jobs(s, {"Director"}))
+        df_credits["writers_producers_clean"] = df_credits["crew"].apply(lambda s: extract_crew_by_jobs(s, {"Writer", "Screenplay", "Producer", "Executive Producer"}))
+        df_credits["all_crew_clean"] = df_credits["crew"].apply(safe_parse_json_names)
 
         out_parquet = os.path.join(SILVER_DIR, "silver_credits.parquet")
         out_csv = os.path.join(SILVER_DIR, "silver_credits.csv")

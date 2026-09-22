@@ -22,9 +22,10 @@ if not TMDB_API_KEY:
 
 session = requests.Session()
 
-def get_tmdb(endpoint: str, params: dict = None, retries: int = 3, delay_sec: float = 0.25) -> dict:
+def get_tmdb(endpoint: str, params: dict = None, retries: int = 3, delay_sec: float = 0.08) -> dict:
     """
     Sends an authenticated GET request to TMDb API with rate limiting and retry logic.
+    Default delay is set to 0.08s for high throughput (~12 req/s) with HTTP 429 backoff.
     """
     if params is None:
         params = {}
